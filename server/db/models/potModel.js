@@ -1,7 +1,6 @@
 import { pool } from '../dbConnection.js'
 
-export class potModel {
-    constructor() { }
+class PotModel {
 
     async createPot(name) {
         try {
@@ -11,3 +10,5 @@ export class potModel {
         }
     }
 }
+
+export const potModel = new PotModel()

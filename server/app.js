@@ -6,6 +6,8 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { initMqtt } from './mqtt/mqttClient.js';
+import { potsRouter } from './routers/potsRouter.js';
+import { mqttRouter } from './routers/mqttRouter.js';
 
 const { SERVER_PORT } = process.env
 
@@ -28,9 +30,7 @@ app.use("/api/mqtt", mqttRouter);
 const main = async () => {
     try {
         initMqtt();
-
         console.log(`Server running on http://localhost:${SERVER_PORT}`)
-
     } catch (error) {
         console.error("Error:", error);
         process.exit(1);

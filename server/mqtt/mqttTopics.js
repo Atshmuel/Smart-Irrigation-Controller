@@ -1,0 +1,1 @@
+export const POT_UPDATE = "pot/+/update/#";
