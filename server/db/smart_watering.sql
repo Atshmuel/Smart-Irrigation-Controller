@@ -34,7 +34,21 @@ CREATE TABLE IF NOT EXISTS `sensors` (
 
 
 
+CREATE TABLE IF NOT EXISTS `pot_schedules` (
+	`id` int AUTO_INCREMENT NOT NULL UNIQUE,
+	`pot_id` int NOT NULL,
+	`start_hour` int NOT NULL,
+	`start_minute` int NOT NULL,
+	`end_hour` int NOT NULL,
+	`end_minute` int NOT NULL,
+	`days` varchar(255) NOT NULL,
+	`created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`)
+);
+
 ALTER TABLE `pots` ADD CONSTRAINT `pots_fk0` FOREIGN KEY (`id`) REFERENCES `water_tracking`(`pot`);
 
 ALTER TABLE `pots` ADD CONSTRAINT `pots_fk1` FOREIGN KEY (`type_id`) REFERENCES `species`(`id`);
 ALTER TABLE `sensors` ADD CONSTRAINT `sensors_fk4` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`);
+ALTER TABLE `pot_schedules` ADD CONSTRAINT `pot_schedules_fk0` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`);

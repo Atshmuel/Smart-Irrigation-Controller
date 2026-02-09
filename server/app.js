@@ -28,7 +28,9 @@ app.use("/api/pots", potsRouter);
 const main = async () => {
     try {
         // initMqtt();
-        console.log(`Server running on http://localhost:${SERVER_PORT}`)
+        app.listen(SERVER_PORT, () => {
+            console.log(`Server running on http://localhost:${SERVER_PORT}`)
+        });
     } catch (error) {
         console.error("Error:", error);
         process.exit(1);
