@@ -1,9 +1,20 @@
 class MqttModel {
 
-    async handleDeviceLog(id, payload) {
+    //handle data from sensors
+    async handleDeviceMessage(id, payload) {
         console.log(id, payload, "<<log");
-
     }
+
+    //mqtt Requests
+    async checkIfSunny() {
+        return true
+    }
+
+    async turnOn() { }
+
+    async turnOff() { }
+
+    async setScheduled() { }
 
 }
 
