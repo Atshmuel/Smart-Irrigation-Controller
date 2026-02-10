@@ -4,20 +4,20 @@ import '../styles/ManagementPanel.css';
 const API_URL = 'http://localhost:3002/api/pots';
 
 function ManagementPanel({ potId = 1 }) {
-    const [isOn, setIsOn] = useState(false);
+    const [isOn, setIsOn] = useState(true);
     const [schedule, setSchedule] = useState({
         startHour: '06',
         startMinute: '00',
         endHour: '20',
         endMinute: '00',
         days: {
-            sunday: true,
-            monday: true,
-            tuesday: true,
-            wednesday: true,
-            thursday: true,
-            friday: true,
-            saturday: true
+            sunday: false,
+            monday: false,
+            tuesday: false,
+            wednesday: false,
+            thursday: false,
+            friday: false,
+            saturday: false
         }
     });
     const [loading, setLoading] = useState(false);
@@ -28,8 +28,24 @@ function ManagementPanel({ potId = 1 }) {
     const daysDisplay = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
     useEffect(() => {
-        fetchPotStatus();
-    }, []);
+        const loadInitialData = async () => {
+            setLoading(true);
+            setStatus('loading');
+            try {
+                await Promise.all([
+                    fetchPotStatus(),
+                ]);
+                setStatus('idle');
+            } catch (error) {
+                setMessage('שגיאה בטעינת הנתונים');
+                setStatus('error');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadInitialData();
+    }, [potId]);
 
     const fetchPotStatus = async () => {
         try {
@@ -200,14 +216,15 @@ function ManagementPanel({ potId = 1 }) {
                             onClick={() => handleToggle(false)}
                             disabled={loading}
                         >
-                            כבה
+                            {isOn ? 'כיבוי' : 'כבה'}
+
                         </button>
                         <button
                             className={`toggle-btn ${isOn ? 'active' : ''}`}
                             onClick={() => handleToggle(true)}
                             disabled={loading}
                         >
-                            הדלק
+                            {isOn ? 'דלוק' : 'הדלק'}
                         </button>
                     </div>
                 </div>
@@ -269,7 +286,7 @@ function ManagementPanel({ potId = 1 }) {
                     </div>
 
                     <div className="days-section">
-                        <label>ימים בשבוע</label>
+                        <label>ימים בשבוע <span>: {Object.values(schedule.days).filter(day => day).length} ימים מתוזמנים</span></label>
                         <div className="days-grid">
                             {daysOfWeek.map((day, index) => (
                                 <button

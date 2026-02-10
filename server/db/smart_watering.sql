@@ -1,54 +1,52 @@
-CREATE TABLE IF NOT EXISTS `species` (
-	`id` int AUTO_INCREMENT NOT NULL UNIQUE,
-	`type` varchar(255) NOT NULL,
-	`instructions` varchar(1000) NOT NULL,
-	PRIMARY KEY (`id`)
-);
+CREATE DATABASE IF NOT EXISTS smart_pot;
 
-CREATE TABLE IF NOT EXISTS `water_tracking` (
-	`id` int AUTO_INCREMENT NOT NULL UNIQUE,
-	`date` date NOT NULL,
-	`time` time NOT NULL,
-	`count` int NOT NULL,
-	`pot` int NOT NULL,
-	PRIMARY KEY (`id`)
+USE smart_pot;
+
+CREATE TABLE IF NOT EXISTS `species` (
+	`id` int AUTO_INCREMENT PRIMARY KEY,
+	`type` varchar(255) NOT NULL,
+	`instructions` varchar(1000) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS `pots` (
-	`id` int AUTO_INCREMENT NOT NULL UNIQUE,
+	`id` int AUTO_INCREMENT PRIMARY KEY,
 	`type_id` int NOT NULL,
 	`name` varchar(50) NOT NULL,
 	`date` date NOT NULL,
-	`status` boolean NOT NULL,
-	PRIMARY KEY (`id`)
+	`status` boolean NOT NULL DEFAULT 0, -- off=0,on=1
+	`mode` ENUM('weather', 'moisture', 'manual', 'scheduled') DEFAULT 'manual',
+	CONSTRAINT `pots_fk_species` FOREIGN KEY (`type_id`) REFERENCES `species`(`id`)
+);
+
+CREATE TABLE IF NOT EXISTS `watering_events` (
+    `id` int AUTO_INCREMENT PRIMARY KEY,
+    `pot_id` int NOT NULL,
+    `start_time` datetime NOT NULL,
+    `end_time` datetime DEFAULT NULL,
+    `duration_seconds` int DEFAULT 0,
+    `water_consumed_liters` float DEFAULT 0,
+    CONSTRAINT `fk_event_pot` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`)
 );
 
 CREATE TABLE IF NOT EXISTS `sensors` (
-	`id` int AUTO_INCREMENT NOT NULL UNIQUE,
-	`name` varchar(50) NOT NULL,
-	`average` float NOT NULL,
-	`date` date NOT NULL,
+	`id` int AUTO_INCREMENT PRIMARY KEY,
 	`pot_id` int NOT NULL,
-	PRIMARY KEY (`id`)
+	`name` varchar(50) NOT NULL, 
+	`value` float NOT NULL,
+	`date` date NOT NULL,
+	`time` time NOT NULL,
+	CONSTRAINT `sensors_fk_pot` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`)
 );
 
-
-
 CREATE TABLE IF NOT EXISTS `pot_schedules` (
-	`id` int AUTO_INCREMENT NOT NULL UNIQUE,
+	`id` int AUTO_INCREMENT PRIMARY KEY,
 	`pot_id` int NOT NULL,
 	`start_hour` int NOT NULL,
 	`start_minute` int NOT NULL,
 	`end_hour` int NOT NULL,
 	`end_minute` int NOT NULL,
-	`days` varchar(255) NOT NULL,
+	`days` varchar(255) NOT NULL, 
 	`created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-	PRIMARY KEY (`id`)
+	CONSTRAINT `schedules_fk_pot` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`)
 );
-
-ALTER TABLE `pots` ADD CONSTRAINT `pots_fk0` FOREIGN KEY (`id`) REFERENCES `water_tracking`(`pot`);
-
-ALTER TABLE `pots` ADD CONSTRAINT `pots_fk1` FOREIGN KEY (`type_id`) REFERENCES `species`(`id`);
-ALTER TABLE `sensors` ADD CONSTRAINT `sensors_fk4` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`);
-ALTER TABLE `pot_schedules` ADD CONSTRAINT `pot_schedules_fk0` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`);

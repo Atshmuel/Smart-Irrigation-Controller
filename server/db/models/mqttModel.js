@@ -11,19 +11,19 @@ class MqttModel {
         return true
     }
 
-    async turnOn(req, res, next) { 
-        // TODO: Send MQTT message to turn on the device
-        console.log(`Turning on device with ID: ${req.params.id}`);
+    async turnOn(req, res, next) {
+        const topic = `pot/${req.params.id}/command`;
+        mqttClient.publish(topic, JSON.stringify({ action: "on" }));
         next();
     }
 
-    async turnOff(req, res, next) { 
+    async turnOff(req, res, next) {
         // TODO: Send MQTT message to turn off the device
         console.log(`Turning off device with ID: ${req.params.id}`);
         next();
     }
 
-    async setScheduled(req, res, next) { 
+    async setScheduled(req, res, next) {
         // TODO: Send MQTT message with schedule configuration
         console.log(`Setting schedule for device with ID: ${req.params.id}`);
         const { startHour, startMinute, endHour, endMinute, days } = req.body;
