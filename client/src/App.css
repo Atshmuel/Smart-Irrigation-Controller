@@ -1,6 +1,116 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f5f5;
+  direction: rtl;
+}
+
 #root {
   margin: 0;
   padding: 0;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
+.App {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Navigation Styles */
+nav {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  gap: 0;
+}
+
+nav li {
+  margin: 0;
+}
+
+nav a {
+  display: block;
+  color: white;
+  text-decoration: none;
+  padding: 16px 24px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+}
+
+nav a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-bottom-color: white;
+}
+
+nav a:active {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-bottom-color: white;
+}
+
+/* Main Content */
+main {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 20px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  nav ul {
+    flex-direction: column-reverse;
+    gap: 0;
+  }
+
+  nav a {
+    width: 100%;
+    padding: 12px 16px;
+    border-bottom: none;
+    border-right: 3px solid transparent;
+    text-align: right;
+  }
+
+  nav a:hover,
+  nav a:active {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-right-color: white;
+  }
+
+  main {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  nav a {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  main {
+    padding: 12px;
+  }
+}

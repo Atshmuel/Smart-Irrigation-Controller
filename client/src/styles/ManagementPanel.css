@@ -1,7 +1,7 @@
 .management-panel {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 4px 0;
+  border-radius: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   direction: rtl;
 }
@@ -11,8 +11,161 @@
   margin: 0 auto;
   background: white;
   border-radius: 20px;
-  padding: 40px 30px;
+  padding: 32px 24px;
   box-shadow: 0 20px 80px rgba(0, 0, 0, 0.2);
+}
+
+/* Header Section with Pot Selector */
+.header-section {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.header-section h1 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+/* Enhanced Pot Selector */
+.pot-selector-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px 24px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.selector-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 250px;
+}
+
+.pot-selector-header label {
+  font-weight: 700;
+  color: white;
+  font-size: 16px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pot-select-custom {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 16px;
+  border: 2px solid white;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #667eea;
+  background: white;
+  direction: rtl;
+  text-align: right;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667eea' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 12px center;
+  background-size: 20px;
+  padding-left: 40px;
+}
+
+.pot-select-custom:hover {
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
+  background-color: #f9f9f9;
+}
+
+.pot-select-custom:focus {
+  outline: none;
+  border-color: white;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3);
+}
+
+/* Inline Control Buttons */
+.control-buttons-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pot-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pot-status {
+  color: white;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.pot-status.active {
+  background: rgba(84, 250, 176, 0.3);
+  color: #fff;
+}
+
+.pot-status.inactive {
+  background: rgba(250, 112, 154, 0.3);
+  color: #fff;
+}
+
+.toggle-btn-inline {
+  padding: 10px 20px;
+  background: white;
+  color: #667eea;
+  border: 2px solid white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.toggle-btn-inline:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.toggle-btn-inline:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.toggle-btn-inline.active {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+  border-color: white;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+.toggle-btn-inline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 h1 {
@@ -35,12 +188,51 @@ h2 {
 
 @media (min-width: 768px) {
   .management-container {
-    padding: 50px 60px;
+    padding: 40px 48px;
   }
 
-  h1 {
+  .header-section h1 {
     font-size: 36px;
-    margin-bottom: 60px;
+    margin-bottom: 28px;
+  }
+
+  .pot-selector-header {
+    padding: 24px 28px;
+    gap: 24px;
+  }
+
+  .selector-wrapper {
+    flex: 2;
+    min-width: 350px;
+  }
+
+  .pot-selector-header label {
+    font-size: 18px;
+  }
+
+  .pot-select-custom {
+    padding: 14px 18px;
+    padding-left: 44px;
+    font-size: 17px;
+    min-width: 300px;
+  }
+
+  .control-buttons-inline {
+    gap: 16px;
+  }
+
+  .toggle-btn-inline {
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+
+  .pot-status {
+    font-size: 16px;
+    padding: 10px 20px;
+  }
+
+  .schedule-section {
+    padding: 36px;
   }
 
   h2 {
@@ -48,139 +240,15 @@ h2 {
   }
 }
 
-/* Control Section */
-.control-section {
-  margin-bottom: 50px;
-  padding: 30px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  border-radius: 15px;
-  border-left: 5px solid #667eea;
-}
-
-@media (min-width: 768px) {
-  .control-section {
-    padding: 40px;
-    margin-bottom: 60px;
-  }
-}
-
-.toggle-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-@media (min-width: 768px) {
-  .toggle-label {
-    font-size: 18px;
-    margin-bottom: 35px;
-  }
-}
-
-.status-badge {
-  padding: 10px 20px;
-  border-radius: 25px;
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-@media (min-width: 768px) {
-  .status-badge {
-    padding: 12px 24px;
-    font-size: 15px;
-  }
-}
-
-.status-badge.on {
-  background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-  color: #155724;
-}
-
-.status-badge.off {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-  color: #721c24;
-}
-
-.toggle-switch-container {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-@media (min-width: 768px) {
-  .toggle-switch-container {
-    gap: 20px;
-  }
-}
-
-.toggle-btn {
-  flex: 1;
-  padding: 16px 25px;
-  font-size: 16px;
-  font-weight: 700;
-  border: 2px solid #e0e0e0;
-  background: white;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-@media (min-width: 768px) {
-  .toggle-btn {
-    padding: 18px 35px;
-    font-size: 17px;
-    flex: 0 1 auto;
-    min-width: 150px;
-  }
-}
-
-.toggle-btn:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-}
-
-.toggle-btn:active:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.toggle-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: #667eea;
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-}
-
-.toggle-btn.active:hover:not(:disabled) {
-  box-shadow: 0 12px 28px rgba(102, 126, 234, 0.5);
-}
-
-.toggle-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* Control Section - DEPRECATED (integrated into header) */
+/* These styles are kept for reference but no longer used */
 
 /* Schedule Section */
 .schedule-section {
-  padding: 30px;
+  padding: 28px;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   border-radius: 15px;
   border-left: 5px solid #764ba2;
-}
-
-@media (min-width: 768px) {
-  .schedule-section {
-    padding: 40px;
-  }
 }
 
 .schedule-inputs {
@@ -502,4 +570,227 @@ h2 {
   color: #0c5460;
   border: 2px solid #0c5460;
   box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .management-panel {
+    min-height: calc(100vh - 56px);
+  }
+
+  .management-container {
+    padding: 16px;
+    border-radius: 0;
+    margin: 0 8px;
+  }
+
+  .header-section {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+  }
+
+  .header-section h1 {
+    font-size: 22px;
+    margin-bottom: 14px;
+  }
+
+  .pot-selector-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .selector-wrapper {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .selector-wrapper label {
+    font-size: 14px;
+    text-align: right;
+  }
+
+  .selector-wrapper select {
+    width: 100%;
+  }
+
+  .pot-select-custom {
+    width: 100%;
+    min-width: auto;
+    padding: 10px 12px;
+    padding-left: 32px;
+    font-size: 14px;
+  }
+
+  .control-buttons-inline {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .pot-info {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .pot-status {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .toggle-btn-inline {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .schedule-section {
+    padding: 16px;
+    margin-top: 16px;
+  }
+
+  .schedule-section h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .schedule-inputs {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .time-group {
+    padding: 12px;
+  }
+
+  .time-picker {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .time-picker input {
+    width: 45px;
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .days-grid {
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 8px;
+  }
+
+  .day-btn {
+    padding: 6px 8px;
+    font-size: 11px;
+    min-height: 45px;
+  }
+
+  .save-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .management-container {
+    padding: 12px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .header-section {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  .header-section h1 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .pot-selector-header {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .selector-wrapper {
+    gap: 6px;
+  }
+
+  .selector-wrapper label {
+    font-size: 12px;
+  }
+
+  .pot-select-custom {
+    padding: 8px 10px;
+    padding-left: 28px;
+    font-size: 13px;
+  }
+
+  .control-buttons-inline {
+    gap: 6px;
+  }
+
+  .pot-status {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .toggle-btn-inline {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .schedule-section {
+    padding: 12px;
+    margin-top: 12px;
+  }
+
+  .schedule-section h2 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .schedule-inputs {
+    gap: 10px;
+  }
+
+  .time-group {
+    padding: 8px;
+  }
+
+  .time-picker {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .time-picker input {
+    width: 40px;
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+
+  .time-picker span {
+    font-size: 14px;
+  }
+
+  .days-grid {
+    grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+    gap: 6px;
+  }
+
+  .day-btn {
+    padding: 4px 6px;
+    font-size: 10px;
+    min-height: 40px;
+  }
+
+  .save-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    margin-top: 12px;
+  }
 }

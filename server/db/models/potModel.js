@@ -16,8 +16,35 @@ class PotModel {
         }
     }
 
+    async createSpecies(req, res, next) {
+        try {
+            const { type, instructions } = req.body;
+            const [results] = await pool.query(
+                'INSERT INTO species (type, instructions) VALUES (?, ?)',
+                [type, instructions]
+            );
+            res.status(201).json({ id: results.insertId, message: "Species created successfully" });
+        } catch (error) {
+            console.log(error);
+            res.status(400).json({ message: "Error creating species" });
+        }
+    }
+
+    async getSpecies(req, res, next) {
+        try {
+            const [results] = await pool.query(
+                'SELECT id,type FROM species'
+            );
+            res.status(200).json(results);
+        } catch (error) {
+            console.log(error);
+            res.status(400).json({ message: "Error fetching species" });
+        }
+    }
+
     async getPot(req, res, next) {
         const { id } = req.params
+        const { withSchedule } = req.query
         try {
             const [results] = await pool.query(
                 'SELECT * FROM pots WHERE id = ?',
@@ -29,11 +56,33 @@ class PotModel {
             }
 
             const pot = results[0];
-
+            if (withSchedule === true || withSchedule === "true") {
+                const [scheduleResults] = await pool.query(
+                    'SELECT * FROM pot_schedules WHERE pot_id = ?',
+                    [id]
+                );
+                if (scheduleResults.length > 0) {
+                    const schedule = scheduleResults[0];
+                    schedule.days = JSON.parse(schedule.days);
+                    pot.schedule = schedule;
+                }
+            }
             res.status(200).json(pot);
         } catch (error) {
             console.log(error);
             res.status(400).json({ message: "Error fetching pot" });
+        }
+    }
+
+    async getAllPots(req, res, next) {
+        try {
+            const [results] = await pool.query(
+                `SELECT * from pots`
+            );
+            res.status(200).json(results);
+        } catch (error) {
+            console.log(error);
+            res.status(400).json({ message: "Error fetching pots" });
         }
     }
 
@@ -85,7 +134,6 @@ class PotModel {
 
     async turnOn(req, res, next) {
         const { id } = req.params
-        console.log("id here:", id);
 
         const alreadyAskedUser = req.cookies.alreadyAskedUser
 
@@ -95,16 +143,16 @@ class PotModel {
                 const isRecommanded = await this.isRecommandedTimeToUse(id);
                 if (!isRecommanded) {
                     res.cookie('alreadyAskedUser', true, {
-                        maxAge: 1000 * 60 * 60,
+                        maxAge: 1000 * 60 * 5, // 5 minutes
                         httpOnly: false,
-                        sameSite: 'none'
+                        sameSite: 'lax',
                     })
-                    return res.status(201).json({ message: "Not recommended to turn on right now, Are you sure you want to turn on?" })
+                    return res.status(201).json({ message: "Not recommended to turn on right now, Are you sure you want to turn on?", requestConfirmation: true })
                 }
             }
 
             await this.updatePot(id, 'UPDATE pots SET status = ? WHERE id = ?', [true, id]);
-            await this.createPotLog(id, 'INSERT INTO pot_logs (pot_id, turn_on_at) VALUES (?, ?)', [id, Date.now()]);
+            await this.createPotLog(id, 'INSERT INTO watering_events (pot_id, start_time) VALUES (?, NOW())', [id]);
             res.status(200).json({ message: "Pot turned on successfully", id, status: true });
             next();
         } catch (error) {
@@ -115,11 +163,34 @@ class PotModel {
 
     async turnOff(req, res, next) {
         const { id } = req.params
-        console.log("id here:", id);
 
         try {
             await this.updatePot(id, 'UPDATE pots SET status = ? WHERE id = ?', [false, id]);
-            await this.createPotLog(id, 'INSERT INTO pot_logs (pot_id, turn_off_at) VALUES (?, ?)', [id, Date.now()]);
+
+            const [row] = await pool.query(
+                `SELECT id, start_time 
+             FROM watering_events 
+             WHERE pot_id = ? AND end_time IS NULL 
+             ORDER BY start_time DESC 
+             LIMIT 1`,
+                [id]
+            );
+
+            if (row.length === 0) {
+                return res.status(400).json({ message: "No active watering event found for this pot" });
+            }
+
+            const event = row[0]
+            if (!event.start_time) {
+                return res.status(400).json({ message: "Pot is already off" });
+            }
+
+            await this.createPotLog(id,
+                `UPDATE watering_events
+                    SET end_time = NOW(),
+                    duration_seconds = TIMESTAMPDIFF(SECOND, start_time, NOW())
+                    WHERE id = ?`, [event.id]);
+
             res.status(200).json({ message: "Pot turned off successfully", id, status: false });
             next();
         } catch (error) {
@@ -167,6 +238,28 @@ class PotModel {
             res.status(400).json({ message: "Error saving schedule" });
         }
     }
+    async getSchedule(req, res, next) {
+        const { id } = req.params
+        try {
+            const [results] = await pool.query(
+                'SELECT * FROM pot_schedules WHERE pot_id = ?',
+                [id]
+            );
+
+            if (results.length === 0) {
+                return res.status(404).json({ message: "Schedule not found" });
+            }
+
+            const schedule = results[0];
+            schedule.days = JSON.parse(schedule.days);
+
+            res.status(200).json(schedule);
+        } catch (error) {
+            console.log(error);
+            res.status(400).json({ message: "Error fetching schedule" });
+        }
+    }
+
 
     async isRecommandedTimeToUse(id) {
         try {
