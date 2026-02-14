@@ -271,13 +271,53 @@ class PotModel {
         const { mode } = req.body;
 
         try {
-            const [results] = await pool.query(
-                'UPDATE pots SET mode = ? WHERE id = ?',
-                [mode, id]
+            // Get current pot to check if it's on
+            const [potResults] = await pool.query(
+                'SELECT status, mode FROM pots WHERE id = ?',
+                [id]
             );
-            if (results.affectedRows === 0) {
+
+            if (potResults.length === 0) {
                 return res.status(404).json({ message: "Pot not found" });
             }
+
+            const currentPot = potResults[0];
+
+            // If pot is on and mode is actually changing, turn it off
+            if (currentPot.status === true && mode !== currentPot.mode) {
+                // Turn off the pot
+                await this.updatePot('UPDATE pots SET status = ?, mode = ? WHERE id = ?', [false, mode, id]);
+
+                // End any active watering event
+                const [row] = await pool.query(
+                    `SELECT id, start_time 
+                 FROM watering_events 
+                 WHERE pot_id = ? AND end_time IS NULL 
+                 ORDER BY start_time DESC 
+                 LIMIT 1`,
+                    [id]
+                );
+
+                if (row.length > 0) {
+                    const event = row[0];
+                    await this.createPotLog(id,
+                        `UPDATE watering_events
+                        SET end_time = NOW(),
+                        duration_seconds = TIMESTAMPDIFF(SECOND, start_time, NOW())
+                        WHERE id = ?`, [event.id]);
+                }
+            } else {
+                // Just update the mode
+                const [results] = await pool.query(
+                    'UPDATE pots SET mode = ? WHERE id = ?',
+                    [mode, id]
+                );
+                if (results.affectedRows === 0) {
+                    return res.status(404).json({ message: "Pot not found" });
+                }
+            }
+
+            req.body.status = false; // Ensure status is set to false for the next middleware
             next();
         } catch (error) {
             console.log(error);

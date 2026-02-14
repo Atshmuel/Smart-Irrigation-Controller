@@ -1,4 +1,4 @@
-
+import { mqttModel } from '../db/models/mqttModel.js';
 
 export async function handleMqttMessage(topic, payload) {
 
@@ -13,6 +13,9 @@ export async function handleMqttMessage(topic, payload) {
     switch (type) {
         case 'log':
             await mqttModel.handleDeviceMessage(id, payload)
+            break;
+        case 'status':
+            await mqttModel.handlePotStatusUpdate(id, payload)
             break;
         default:
             console.log("unknown type:", type);
