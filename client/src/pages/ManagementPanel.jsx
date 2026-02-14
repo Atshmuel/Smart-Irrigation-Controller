@@ -29,6 +29,8 @@ function ManagementPanel() {
     const [message, setMessage] = useState('');
     const [status, setStatus] = useState('idle');
     const [showToast, setShowToast] = useState(false);
+    const [mode, setMode] = useState('manual');
+    const [savedMode, setSavedMode] = useState('manual');
 
     const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const daysDisplay = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -78,6 +80,8 @@ function ManagementPanel() {
             const response = await fetch(`${API_URL}/${potId}?withSchedule=true`);
             const data = await response.json();
             setIsOn(data.status);
+            setMode(data.mode); // Set the mode from the API response
+            setSavedMode(data.mode); // Set the saved mode as well
 
             // Load saved schedule if exists
             if (data.schedule) {
@@ -167,6 +171,37 @@ function ManagementPanel() {
         }
     };
 
+    const handleSaveMode = async () => {
+        setLoading(true);
+        setStatus('loading');
+
+        try {
+            const response = await fetch(`${API_URL}/mode/${selectedPotId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ mode })
+            });
+
+            if (response.ok) {
+                setSavedMode(mode);
+                showToastMessage('✓ המצב נשמר בהצלחה', 'success');
+                setStatus('success');
+            } else {
+                const errorData = await response.json();
+                showToastMessage(errorData.message || 'שגיאה בשמירת המצב', 'error');
+                setStatus('error');
+            }
+        } catch (error) {
+            console.error('Error saving mode:', error);
+            showToastMessage('שגיאה בשליחת הבקשה', 'error');
+            setStatus('error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleScheduleChange = (e) => {
         const { name, value } = e.target;
         let numValue = parseInt(value) || 0;
@@ -228,6 +263,9 @@ function ManagementPanel() {
                 body: JSON.stringify(payload)
             });
             if (response.ok) {
+                // Server automatically sets mode to 'scheduled' when schedule is saved
+                setSavedMode('scheduled');
+                setMode('scheduled');
                 showToastMessage('✓ לוח הזמנים נשמר בהצלחה', 'success');
                 setStatus('success');
                 setTimeout(() => setMessage(''), 3000);
@@ -266,7 +304,7 @@ function ManagementPanel() {
                             </div>
 
                             {/* Control Buttons - Inline with Selector */}
-                            {selectedPotId && (
+                            {selectedPotId && savedMode === 'manual' && (
                                 <div className="control-buttons-inline">
                                     <div className="pot-info">
                                         <span className={`pot-status ${isOn ? 'active' : 'inactive'}`}>
@@ -292,90 +330,125 @@ function ManagementPanel() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Mode Selector */}
+                        {selectedPotId && (
+                            <div className="mode-selector-header">
+                                <div className="selector-wrapper">
+                                    <label>בחר מצב:</label>
+                                    <select
+                                        value={mode}
+                                        onChange={(e) => setMode(e.target.value)}
+                                        className="mode-select-custom"
+                                    >
+                                        <option value="manual">ידני</option>
+                                        <option value="scheduled">מתוזמן</option>
+                                        <option value="weather">מזג אוויר</option>
+                                        <option value="moisture">לחות</option>
+                                    </select>
+                                </div>
+                                <div className="mode-info">
+                                    <span className="mode-status">
+                                        מצב נוכחי: {mode === 'manual' ? 'ידני' : mode === 'scheduled' ? 'מתוזמן' : mode === 'weather' ? 'מזג אוויר' : 'לחות'}
+                                    </span>
+                                </div>
+                                {mode !== 'scheduled' && mode !== savedMode && (
+                                    <button
+                                        className="save-mode-btn"
+                                        onClick={handleSaveMode}
+                                        disabled={loading}
+                                    >
+                                        {loading ? '⏳ שומר...' : '💾 שמור מצב'}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Control Section - Removed, integrated in header */}
 
                     {/* Schedule Section */}
-                    <div className="schedule-section">
-                        <h2>📅 הגדרת לוח זמנים</h2>
+                    {mode === 'scheduled' && (
+                        <div className="schedule-section">
+                            <h2>📅 הגדרת לוח זמנים</h2>
 
-                        <div className="schedule-inputs">
-                            <div className="time-group">
-                                <label>שעת התחלה</label>
-                                <div className="time-picker">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="23"
-                                        value={schedule.startHour}
-                                        name="startHour"
-                                        onChange={handleScheduleChange}
-                                        placeholder="00"
-                                    />
-                                    <span>:</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="59"
-                                        value={schedule.startMinute}
-                                        name="startMinute"
-                                        onChange={handleScheduleChange}
-                                        placeholder="00"
-                                    />
+                            <div className="schedule-inputs">
+                                <div className="time-group">
+                                    <label>שעת התחלה</label>
+                                    <div className="time-picker">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="23"
+                                            value={schedule.startHour}
+                                            name="startHour"
+                                            onChange={handleScheduleChange}
+                                            placeholder="00"
+                                        />
+                                        <span>:</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="59"
+                                            value={schedule.startMinute}
+                                            name="startMinute"
+                                            onChange={handleScheduleChange}
+                                            placeholder="00"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="time-group">
+                                    <label>שעת סיום</label>
+                                    <div className="time-picker">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="23"
+                                            value={schedule.endHour}
+                                            name="endHour"
+                                            onChange={handleScheduleChange}
+                                            placeholder="00"
+                                        />
+                                        <span>:</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="59"
+                                            value={schedule.endMinute}
+                                            name="endMinute"
+                                            onChange={handleScheduleChange}
+                                            placeholder="00"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="time-group">
-                                <label>שעת סיום</label>
-                                <div className="time-picker">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="23"
-                                        value={schedule.endHour}
-                                        name="endHour"
-                                        onChange={handleScheduleChange}
-                                        placeholder="00"
-                                    />
-                                    <span>:</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="59"
-                                        value={schedule.endMinute}
-                                        name="endMinute"
-                                        onChange={handleScheduleChange}
-                                        placeholder="00"
-                                    />
+                            <div className="days-section">
+                                <label>ימים בשבוע <span>: {Object.values(schedule.days).filter(day => day).length} ימים מתוזמנים</span></label>
+                                <div className="days-grid">
+                                    {daysOfWeek.map((day, index) => (
+                                        <button
+                                            key={day}
+                                            className={`day-btn ${schedule.days[day] ? 'selected' : ''}`}
+                                            onClick={() => handleDayToggle(day)}
+                                            title={daysDisplay[index]}
+                                        >
+                                            {daysDisplay[index]}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="days-section">
-                            <label>ימים בשבוע <span>: {Object.values(schedule.days).filter(day => day).length} ימים מתוזמנים</span></label>
-                            <div className="days-grid">
-                                {daysOfWeek.map((day, index) => (
-                                    <button
-                                        key={day}
-                                        className={`day-btn ${schedule.days[day] ? 'selected' : ''}`}
-                                        onClick={() => handleDayToggle(day)}
-                                        title={daysDisplay[index]}
-                                    >
-                                        {daysDisplay[index]}
-                                    </button>
-                                ))}
-                            </div>
+                            <button
+                                className="save-btn"
+                                onClick={handleSaveSchedule}
+                                disabled={loading}
+                            >
+                                {loading ? '⏳ שומר...' : '💾 שמור לוח זמנים ושנה מצב'}
+                            </button>
                         </div>
-
-                        <button
-                            className="save-btn"
-                            onClick={handleSaveSchedule}
-                            disabled={loading}
-                        >
-                            {loading ? '⏳ שומר...' : '💾 שמור לוח זמנים'}
-                        </button>
-                    </div>
+                    )}
 
                     {/* Message Display */}
                     {showToast && (

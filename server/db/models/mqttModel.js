@@ -1,3 +1,4 @@
+import { mqttClient } from '../../mqtt/mqttClient.js';
 class MqttModel {
 
     // Handle data from sensors
@@ -6,15 +7,16 @@ class MqttModel {
     }
 
     // MQTT Requests
-    async checkIfSunny() {
-        // TODO: Implement actual sensor data checking
+    async checkIfSunny(id) {
+        //id of the pot to send the mqtt request to get the sunny data from the sensor
         return true
     }
 
     async turnOn(req, res, next) {
         const topic = `pot/${req.params.id}/command`;
         mqttClient.publish(topic, JSON.stringify({ action: "on" }));
-        next();
+
+        return res.status(200).json({ message: "Turn on command sent successfully" });
     }
 
     async turnOff(req, res, next) {
@@ -28,7 +30,17 @@ class MqttModel {
         console.log(`Setting schedule for device with ID: ${req.params.id}`);
         const { startHour, startMinute, endHour, endMinute, days } = req.body;
         console.log(`Schedule: ${startHour}:${startMinute} - ${endHour}:${endMinute}, Days: ${JSON.stringify(days)}`);
-        next();
+
+        return res.status(200).json({ message: "Schedule set command sent successfully" });
+    }
+
+    async changePotMode(req, res, next) {
+        const { id } = req.params;
+        const { mode } = req.body;
+        const topic = `pot/${id}/command`;
+        mqttClient.publish(topic, JSON.stringify({ action: "change_mode", mode }));
+
+        return res.status(200).json({ message: "Mode change command sent successfully" });
     }
 
 }

@@ -15,10 +15,13 @@ potsRouter.get('/species/get', potModel.getSpecies)
 potsRouter.post('/', potModel.createPot)
 potsRouter.post('/species/create', potModel.createSpecies)
 
-potsRouter.post('/schedule/:id', potModel.setScheduled, mqttModel.setScheduled)
+potsRouter.post('/schedule/:id', potModel.setScheduled, potModel.changePotMode, mqttModel.setScheduled)
 //Using bind to ensure the correct 'this' context in the model methods when used as route handlers
 potsRouter.post('/on/:id', potModel.turnOn.bind(potModel), mqttModel.turnOn)
 potsRouter.post('/off/:id', potModel.turnOff.bind(potModel), mqttModel.turnOff)
+
+
+potsRouter.put('/mode/:id', potModel.changePotMode, mqttModel.changePotMode)
 
 
 

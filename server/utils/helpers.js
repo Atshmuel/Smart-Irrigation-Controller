@@ -1,6 +1,6 @@
-import { mqttModel } from "../db/models/mqttModel";
+import { mqttModel } from "../db/models/mqttModel.js";
 
-export async function isRecommandedTimeToUse() {
+export async function isRecommandedTimeToUse(id) {
     try {
         const now = new Date();
         const currHour = now.getHours();
@@ -10,7 +10,9 @@ export async function isRecommandedTimeToUse() {
             return false;
 
         //else check if sunny data will be returned from the sensor 
-        return await mqttModel.checkIfSunny()
+        const isSunny = await mqttModel.checkIfSunny(id);
+
+        return !isSunny; // If it's sunny, it's not recommended to turn on
     } catch (error) {
         console.log(error);
         return false

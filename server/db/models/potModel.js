@@ -1,3 +1,4 @@
+import { isRecommandedTimeToUse } from '../../utils/helpers.js';
 import { pool } from '../dbConnection.js'
 
 class PotModel {
@@ -86,7 +87,7 @@ class PotModel {
         }
     }
 
-    async updatePot(id, query, queryParams) {
+    async updatePot(query, queryParams) {
         try {
             const [results] = await pool.query(
                 query,
@@ -140,18 +141,18 @@ class PotModel {
         try {
             // Check if it's a recommended time to use
             if (!alreadyAskedUser) {
-                const isRecommanded = await this.isRecommandedTimeToUse(id);
-                if (!isRecommanded) {
+                const isRecommandedToUse = await isRecommandedTimeToUse(id);
+                if (!isRecommandedToUse) {
                     res.cookie('alreadyAskedUser', true, {
                         maxAge: 1000 * 60 * 5, // 5 minutes
                         httpOnly: false,
                         sameSite: 'lax',
                     })
-                    return res.status(201).json({ message: "Not recommended to turn on right now, Are you sure you want to turn on?", requestConfirmation: true })
+                    return res.status(201).json({ message: "לא מומלץ להדליק בין השעות 12:00 - 18:00 או כשאשר יש שמש חזקה, האם עדיין תרצו להדליק?", requestConfirmation: true })
                 }
             }
 
-            await this.updatePot(id, 'UPDATE pots SET status = ? WHERE id = ?', [true, id]);
+            await this.updatePot('UPDATE pots SET status = ? WHERE id = ?', [true, id]);
             await this.createPotLog(id, 'INSERT INTO watering_events (pot_id, start_time) VALUES (?, NOW())', [id]);
             res.status(200).json({ message: "Pot turned on successfully", id, status: true });
             next();
@@ -165,14 +166,14 @@ class PotModel {
         const { id } = req.params
 
         try {
-            await this.updatePot(id, 'UPDATE pots SET status = ? WHERE id = ?', [false, id]);
+            await this.updatePot('UPDATE pots SET status = ? WHERE id = ?', [false, id]);
 
             const [row] = await pool.query(
                 `SELECT id, start_time 
-             FROM watering_events 
-             WHERE pot_id = ? AND end_time IS NULL 
-             ORDER BY start_time DESC 
-             LIMIT 1`,
+                FROM watering_events 
+                WHERE pot_id = ? AND end_time IS NULL 
+                ORDER BY start_time DESC 
+                LIMIT 1`,
                 [id]
             );
 
@@ -217,6 +218,7 @@ class PotModel {
                 [id]
             );
 
+
             if (existing.length > 0) {
                 // Update existing schedule
                 await pool.query(
@@ -230,6 +232,9 @@ class PotModel {
                     [id, startHour, startMinute, endHour, endMinute, daysJson]
                 );
             }
+
+            // Update pot mode to 'scheduled'
+            req.body.mode = 'scheduled'; // Set mode in request body for the next middleware
 
             res.status(200).json({ message: "Schedule saved successfully", id });
             next();
@@ -261,36 +266,27 @@ class PotModel {
     }
 
 
-    async isRecommandedTimeToUse(id) {
+    async changePotMode(req, res, next) {
+        const { id } = req.params;
+        const { mode } = req.body;
+
         try {
-            const [schedules] = await pool.query(
-                'SELECT * FROM pot_schedules WHERE pot_id = ?',
-                [id]
+            const [results] = await pool.query(
+                'UPDATE pots SET mode = ? WHERE id = ?',
+                [mode, id]
             );
-
-            if (schedules.length === 0) return true;
-
-            const schedule = schedules[0];
-            const now = new Date();
-            const currentHour = now.getHours();
-            const currentMinute = now.getMinutes();
-            const currentDay = now.getDay();
-
-            const days = JSON.parse(schedule.days);
-            const isValidDay = days.includes(currentDay);
-
-            if (!isValidDay) return false;
-
-            const currentTime = currentHour * 60 + currentMinute;
-            const startTime = schedule.start_hour * 60 + schedule.start_minute;
-            const endTime = schedule.end_hour * 60 + schedule.end_minute;
-
-            return currentTime >= startTime && currentTime <= endTime;
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ message: "Pot not found" });
+            }
+            next();
         } catch (error) {
             console.log(error);
-            return true;
+            res.status(400).json({ message: "Error changing pot mode" });
         }
     }
+
+
+
 }
 
 
