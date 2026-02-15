@@ -55,32 +55,37 @@ class MqttModel {
         }
     }
 
-    // MQTT Requests
-    async checkIfSunny(id) {
-        //id of the pot to send the mqtt request to get the sunny data from the sensor
-        return true
-    }
+
 
     async turnOn(req, res, next) {
         const topic = `pot/${req.params.id}/command`;
         mqttClient.publish(topic, JSON.stringify({ action: "on" }));
-
+        if (res && res.headersSent) {
+            if (typeof next === 'function') return next();
+            return;
+        }
         return res.status(200).json({ message: "Turn on command sent successfully" });
     }
 
     async turnOff(req, res, next) {
-        // TODO: Send MQTT message to turn off the device
-        console.log(`Turning off device with ID: ${req.params.id}`);
-        next();
+        const topic = `pot/${req.params.id}/command`;
+        mqttClient.publish(topic, JSON.stringify({ action: "off" }));
+        if (res && res.headersSent) {
+            if (typeof next === 'function') return next();
+            return;
+        }
+        return res.status(200).json({ message: "Turn off command sent successfully" });
     }
 
     async setScheduled(req, res, next) {
-        // TODO: Send MQTT message with schedule configuration
         console.log(`Setting schedule for device with ID: ${req.params.id}`);
         const { startHour, startMinute, endHour, endMinute, days } = req.body;
         console.log(`Schedule: ${startHour}:${startMinute} - ${endHour}:${endMinute}, Days: ${JSON.stringify(days)}`);
 
-        return res.status(200).json({ message: "Schedule set command sent successfully" });
+        const topic = `pot/${req.params.id}/schedule`;
+        mqttClient.publish(topic, JSON.stringify({ startHour, startMinute, endHour, endMinute, days }));
+
+        next();
     }
 
     async changePotMode(req, res, next) {
@@ -88,10 +93,46 @@ class MqttModel {
         const { mode, status } = req.body;
         const topic = `pot/${id}/command`;
         mqttClient.publish(topic, JSON.stringify({ action: "change_mode", mode, status }));
-
+        if (res && res.headersSent) {
+            if (typeof next === 'function') return next();
+            return;
+        }
         return res.status(200).json({ message: "Mode change command sent successfully" });
     }
 
+
+    async checkIfSunny(id) {
+        return new Promise((resolve, reject) => {
+            const topicResponse = `pot/${id}/update/log`;
+            const topicRequest = `pot/${id}/command`;
+
+            const timeout = setTimeout(() => {
+                mqttClient.removeListener("message", responseHandler);
+                reject(new Error("Timeout: Arduino did not respond"));
+            }, 5000);
+
+
+            const responseHandler = (topic, message) => {
+                if (topic === topicResponse) {
+                    try {
+                        const payload = JSON.parse(message.toString());
+
+
+                        const isSunny = payload.light_level > 700;
+
+                        clearTimeout(timeout);
+                        mqttClient.removeListener("message", responseHandler);
+                        resolve(isSunny);
+                    } catch (e) {
+                        console.error("Error parsing response:", e);
+                    }
+                }
+            };
+
+            mqttClient.on("message", responseHandler);
+            mqttClient.publish(topicRequest, JSON.stringify({ action: "request_light" }));
+        });
+    }
 }
 
 export const mqttModel = new MqttModel()

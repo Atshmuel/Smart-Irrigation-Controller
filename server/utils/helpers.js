@@ -11,7 +11,6 @@ export async function isRecommandedTimeToUse(id) {
 
         //else check if sunny data will be returned from the sensor 
         const isSunny = await mqttModel.checkIfSunny(id);
-
         return !isSunny; // If it's sunny, it's not recommended to turn on
     } catch (error) {
         console.log(error);
