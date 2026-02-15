@@ -8,8 +8,8 @@
 #define LIGHT_PIN 35
 
 // WiFi credentials
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "";
+const char* password = "";
 
 // Device and pot identifiers
 const String deviceId = "1";
@@ -27,8 +27,15 @@ const int mqttPort = 1883;
 String commandTopic = "pot/" + deviceId + "/command";   
 String statusTopic = "pot/" + deviceId + "/update/status";
 String logTopic = "pot/" + deviceId + "/update/log";
+String scheduledTopic = "pot/" + deviceId + "/schedule";
 
-int currentMode = 0;
+int schedStartHour = 7;
+int schedStartMin = 0;
+int schedEndHour = 19;
+int schedEndMin = 0;
+bool schedDays[7] = {false, false, false, false, false, false, false};
+
+String currentMode = "manual";
 bool isPumpOn = false;
 unsigned long pumpStartTime = 0;
 bool manualOverride = false;
@@ -51,7 +58,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   Serial.println(message);
 
-  StaticJsonDocument<200> doc;
+  StaticJsonDocument<512> doc;
   DeserializationError error = deserializeJson(doc, message);
 
   if (error) {
@@ -60,14 +67,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
     return;
   }
 
-  const char* action = doc["action"];
-
-  
+if (String(topic) == scheduledTopic) {
+    schedStartHour = doc["startHour"];
+    schedStartMin = doc["startMinute"];
+    schedEndHour = doc["endHour"];
+    schedEndMin = doc["endMinute"];
+    
+    for(int i=0; i<7; i++) schedDays[i] = false;
+    JsonArray days = doc["days"];
+    for(int dayIdx : days) {
+      if(dayIdx >= 0 && dayIdx < 7) schedDays[dayIdx] = true;
+    }
+    Serial.println("Schedule updated successfully");
+  }else if (doc.containsKey("action"))
+  {
+    const char* action = doc["action"];
   if (strcmp(action, "change_mode") == 0) {
     const char* newMode = doc["mode"];
     currentMode = String(newMode);
     Serial.println("Mode changed to: " + currentMode);
-    // כאן תוסיף לוגיקה לאיפוס טיימרים אם צריך
   }
   
   else if (strcmp(action, "on") == 0) {
@@ -79,6 +97,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("Received OFF command from server");
     // turnPumpOff();
   }
+  else if (strcmp(action, "request_light") == 0) {
+    int lightValue = analogRead(A0);
+    StaticJsonDocument<200> doc;
+    doc["light_level"] = lightValue;
+    char buffer[256];
+    serializeJson(doc, buffer);
+    mqttClient.publish(logTopic.c_str(), buffer);
+  }
+}
 }
 
 
@@ -88,14 +115,15 @@ void reconnect() {
 
     String clientId = "ESP8266Client-" + String(random(0xffff), HEX);
     
-    if (client.connect(clientId.c_str())) {
+    if (mqttClient.connect(clientId.c_str())) {
       Serial.println("connected");
       
     
       //subscribe to pot/<id>/command
       mqttClient.subscribe(commandTopic.c_str());
       Serial.println("Subscribed to: " + commandTopic);
-      
+      mqttClient.subscribe(scheduledTopic.c_str());
+
     } else {
       Serial.print("failed, rc=");
       Serial.print(mqttClient.state());
@@ -136,7 +164,6 @@ void publishSensorData(float temp, float humidity, int moisture, int lightLevel)
 }
 
 
-<<<<<<< HEAD
 void sendPumpLog(long duration) {
   StaticJsonDocument<200> doc;
   doc["deviceId"] = deviceId;
@@ -145,7 +172,7 @@ void sendPumpLog(long duration) {
 
   char buffer[256];
   serializeJson(doc, buffer);
-  client.publish(logTopic.c_str(), buffer);
+  mqttClient.publish(logTopic.c_str(), buffer);
 }
 
 float getTemperature() {
@@ -168,8 +195,8 @@ void setPumpState(bool turnOn, bool force = false) {
 
   if (turnOn && !isPumpOn) {
     if (isSunny && !force) {
-      if (currentMode == 2) {
-         client.publish(logTopic.c_str(), "{\"alert\": \"HIGH_SUN_WARNING\"}");
+      if (currentMode == "manual") {
+         mqttClient.publish(logTopic.c_str(), "{\"alert\": \"HIGH_SUN_WARNING\"}");
       }
       return;
     }
@@ -202,8 +229,17 @@ void handleSoilMode() {
   }
 }
 
-void handleScheduleMode(int hour) {
-  if (hour == 7 || hour == 19) {
+void handleScheduleMode(int hour, int minute, int dayOfWeek) {
+  if (!schedDays[dayOfWeek]) {
+    setPumpState(false);
+    return;
+  }
+
+  int currentTotalMin = (hour * 60) + minute;
+  int startTotalMin = (schedStartHour * 60) + schedStartMin;
+  int endTotalMin = (schedEndHour * 60) + schedEndMin;
+
+  if (currentTotalMin >= startTotalMin && currentTotalMin < endTotalMin) {
     setPumpState(true);
   } else {
     setPumpState(false);
@@ -211,11 +247,12 @@ void handleScheduleMode(int hour) {
 }
 
 void setup() {
+  Serial.begin(115200);
+  delay(5000);
   pinMode(PUMP_PIN, OUTPUT);
   digitalWrite(PUMP_PIN, LOW);
 
   
-  Serial.begin(115200);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -223,7 +260,6 @@ void setup() {
   }
   
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  // הגדרות MQTT
   mqttClient.setServer(mqtt_server, 1883);
   mqttClient.setCallback(callback); 
 }
@@ -233,26 +269,26 @@ void loop() {
       reconnect();
     }
     mqttClient.loop();
+    
 
   struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
     return;
   }
   int currentHour = timeinfo.tm_hour;
-
-  switch (currentMode) {
-    case 0:
-      handleWeatherMode(currentHour);
-      break;
-    case 1:
-      handleSoilMode();
-      break;
-    case 2:
-      break;
-    case 3:
-      handleScheduleMode(currentHour);
-      break;
-  }
+  int currentMin = timeinfo.tm_min;
+  int currentDay = timeinfo.tm_wday;
+if (currentMode == "weather") {
+  handleWeatherMode(currentHour);
+} 
+else if (currentMode == "moisture") {
+  handleSoilMode();
+} 
+else if (currentMode == "scheduled") {
+  handleScheduleMode(currentHour, currentMin,currentDay);
+} 
+else if (currentMode == "manual") {
+}
 
   if (millis() - lastMsgTime > reportInterval) {
     lastMsgTime = millis();
@@ -268,6 +304,6 @@ void loop() {
 
     char buffer[256];
     serializeJson(doc, buffer);
-    client.publish(statusTopic.c_str(), buffer);
+    mqttClient.publish(statusTopic.c_str(), buffer);
   }
 }
