@@ -3,22 +3,30 @@
 #include <ArduinoJson.h>
 #include "time.h"
 
+#define PUMP_PIN 5
+#define SOIL_PIN 34
+#define LIGHT_PIN 35
+
+// WiFi credentials
 const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
-const char* mqtt_server = "broker.hivemq.com";
-const char* deviceId = "1";
+
+// Device and pot identifiers
+const String deviceId = "1";
 
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 7200;
 const int   daylightOffset_sec = 3600;
 
-String commandTopic = "pot/" + String(deviceId) + "/command";
-String statusTopic = "pot/" + String(deviceId) + "/update/status";
-String logTopic = "pot/" + String(deviceId) + "/update/log";
 
-#define PUMP_PIN 5
-#define SOIL_PIN 34
-#define LIGHT_PIN 35
+
+// MQTT broker details
+const char* mqtt_server = "broker.hivemq.com";
+
+const int mqttPort = 1883;
+String commandTopic = "pot/" + deviceId + "/command";   
+String statusTopic = "pot/" + deviceId + "/update/status";
+String logTopic = "pot/" + deviceId + "/update/log";
 
 int currentMode = 0;
 bool isPumpOn = false;
@@ -27,9 +35,108 @@ bool manualOverride = false;
 unsigned long lastMsgTime = 0;
 const long reportInterval = 10000;
 
-WiFiClient espClient;
-PubSubClient client(espClient);
 
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+
+  String message;
+  for (unsigned int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+  Serial.println(message);
+
+  StaticJsonDocument<200> doc;
+  DeserializationError error = deserializeJson(doc, message);
+
+  if (error) {
+    Serial.print("deserializeJson() failed: ");
+    Serial.println(error.c_str());
+    return;
+  }
+
+  const char* action = doc["action"];
+
+  
+  if (strcmp(action, "change_mode") == 0) {
+    const char* newMode = doc["mode"];
+    currentMode = String(newMode);
+    Serial.println("Mode changed to: " + currentMode);
+    // כאן תוסיף לוגיקה לאיפוס טיימרים אם צריך
+  }
+  
+  else if (strcmp(action, "on") == 0) {
+    Serial.println("Received ON command from server");
+    // turnPumpOn(); 
+  }
+  
+  else if (strcmp(action, "off") == 0) {
+    Serial.println("Received OFF command from server");
+    // turnPumpOff();
+  }
+}
+
+
+void reconnect() {
+  while (!mqttClient.connected()) {
+    Serial.print("Attempting MQTT connection...");
+
+    String clientId = "ESP8266Client-" + String(random(0xffff), HEX);
+    
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+      
+    
+      //subscribe to pot/<id>/command
+      mqttClient.subscribe(commandTopic.c_str());
+      Serial.println("Subscribed to: " + commandTopic);
+      
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(mqttClient.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);
+    }
+  }
+}
+
+void publishPumpStatus(bool isOn) {
+  StaticJsonDocument<200> doc;
+  doc["status"] = isOn; 
+
+  char buffer[256];
+  serializeJson(doc, buffer);
+
+  mqttClient.publish(statusTopic.c_str(), buffer);
+  
+  Serial.print("Sent pump status: ");
+  Serial.println(isOn ? "ON" : "OFF");
+}
+
+//need to call this metod 4 times a day
+void publishSensorData(float temp, float humidity, int moisture, int lightLevel) {
+  StaticJsonDocument<200> doc;
+  
+  doc["temperature"] = temp;
+  doc["humidity"] = humidity;
+  doc["soil_moisture"] = moisture;
+  doc["light_level"] = lightLevel;
+  doc["current_mode"] = currentMode; 
+
+  char buffer[256];
+  serializeJson(doc, buffer);
+
+  mqttClient.publish(logTopic.c_str(), buffer);
+  Serial.println("Sent sensor log data");
+}
+
+
+<<<<<<< HEAD
 void sendPumpLog(long duration) {
   StaticJsonDocument<200> doc;
   doc["deviceId"] = deviceId;
@@ -103,61 +210,29 @@ void handleScheduleMode(int hour) {
   }
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
-  String message;
-  for (int i = 0; i < length; i++) message += (char)payload[i];
-
-  StaticJsonDocument<256> doc;
-  DeserializationError error = deserializeJson(doc, message);
-
-  if (!error) {
-    if (doc.containsKey("setMode")) {
-      currentMode = doc["setMode"];
-      setPumpState(false);
-      manualOverride = false;
-    }
-
-    if (currentMode == 2 && doc.containsKey("pumpCmd")) {
-      String cmd = doc["pumpCmd"];
-      if (cmd == "OFF") setPumpState(false);
-      else if (cmd == "ON") setPumpState(true, false);
-      else if (cmd == "FORCE_ON") {
-        manualOverride = true;
-        setPumpState(true, true);
-      }
-    }
-  }
-}
-
-void reconnect() {
-  while (!client.connected()) {
-    if (client.connect(deviceId)) {
-      client.subscribe(commandTopic.c_str());
-    } else {
-      delay(5000);
-    }
-  }
-}
-
 void setup() {
-  Serial.begin(115200);
   pinMode(PUMP_PIN, OUTPUT);
   digitalWrite(PUMP_PIN, LOW);
 
+  
+  Serial.begin(115200);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
+    Serial.print(".");
   }
-
+  
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
+  // הגדרות MQTT
+  mqttClient.setServer(mqtt_server, 1883);
+  mqttClient.setCallback(callback); 
 }
 
 void loop() {
-  if (!client.connected()) reconnect();
-  client.loop();
+    if (!mqttClient.connected()) {
+      reconnect();
+    }
+    mqttClient.loop();
 
   struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){

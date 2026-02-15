@@ -28,3 +28,17 @@ export function initMqtt() {
     });
 
 }
+
+
+/* MQTT pub example:
+
+mosquitto_pub -h broker.hivemq.com -t "pot/1/update/status" -m '{"status": true}'
+mosquitto_pub -h broker.hivemq.com -t "pot/1/update/status" -m '{"status": false}'
+
+mosquitto_pub -h broker.hivemq.com -t "pot/1/update/log" -m '{"temperature": 25.5, "humidity": 60, "soil_moisture": 40, "light_level": 800, "current_mode": "manual"}'
+
+for dubugging:
+mosquitto_sub -h broker.hivemq.com -t "pot/1/#" -v
+
+
+*/
