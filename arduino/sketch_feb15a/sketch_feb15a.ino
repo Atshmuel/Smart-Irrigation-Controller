@@ -2,14 +2,19 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "time.h"
+#include <DHT.h>
 
-#define PUMP_PIN 5
-#define SOIL_PIN 34
-#define LIGHT_PIN 35
+#define PUMP_PIN 23
+#define SOIL_PIN 39
+#define LIGHT_PIN 36
+#define DHT_PIN 16
+#define DHTTYPE DHT22
+
+DHT dht(DHT_PIN, DHTTYPE);
 
 // WiFi credentials
-const char* ssid = "";
-const char* password = "";
+const char* ssid = "Adva";
+const char* password = "0526578915";
 
 // Device and pot identifiers
 const String deviceId = "1";
@@ -46,6 +51,48 @@ const long reportInterval = 10000;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
+void sendPumpLog(long duration) {
+  StaticJsonDocument<200> doc;
+  doc["deviceId"] = deviceId;
+  doc["action"] = "WATERING_DONE";
+  doc["duration_sec"] = duration / 1000;
+
+  char buffer[256];
+  serializeJson(doc, buffer);
+  mqttClient.publish(logTopic.c_str(), buffer);
+}
+
+float getTemperature() {
+  return dht.readTemperature();
+}
+
+void setPumpState(bool turnOn, bool force = false) {
+  int lightLevel = analogRead(LIGHT_PIN);
+  bool isSunny = lightLevel > 2000;
+
+  if (!turnOn) {
+    if (isPumpOn) {
+      digitalWrite(PUMP_PIN, HIGH);
+      long duration = millis() - pumpStartTime;
+      sendPumpLog(duration);
+      isPumpOn = false;
+    }
+    return;
+  }
+
+  if (turnOn && !isPumpOn) {
+    if (isSunny && !force) {
+      if (currentMode == "manual") {
+         mqttClient.publish(logTopic.c_str(), "{\"alert\": \"HIGH_SUN_WARNING\"}");
+      }
+      return;
+    }
+
+    digitalWrite(PUMP_PIN, LOW);
+    pumpStartTime = millis();
+    isPumpOn = true;
+  }
+}
 
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
@@ -90,15 +137,15 @@ if (String(topic) == scheduledTopic) {
   
   else if (strcmp(action, "on") == 0) {
     Serial.println("Received ON command from server");
-    // turnPumpOn(); 
+    setPumpState(true, true); // Force ON regardless of conditions
   }
   
   else if (strcmp(action, "off") == 0) {
     Serial.println("Received OFF command from server");
-    // turnPumpOff();
+    setPumpState(false, true); // Force OFF regardless of conditions
   }
   else if (strcmp(action, "request_light") == 0) {
-    int lightValue = analogRead(A0);
+    int lightValue = analogRead(LIGHT_PIN);
     StaticJsonDocument<200> doc;
     doc["light_level"] = lightValue;
     char buffer[256];
@@ -163,58 +210,15 @@ void publishSensorData(float temp, float humidity, int moisture, int lightLevel)
   Serial.println("Sent sensor log data");
 }
 
-
-void sendPumpLog(long duration) {
-  StaticJsonDocument<200> doc;
-  doc["deviceId"] = deviceId;
-  doc["action"] = "WATERING_DONE";
-  doc["duration_sec"] = duration / 1000;
-
-  char buffer[256];
-  serializeJson(doc, buffer);
-  mqttClient.publish(logTopic.c_str(), buffer);
-}
-
-float getTemperature() {
-  return 28.0;
-}
-
-void setPumpState(bool turnOn, bool force = false) {
-  int lightLevel = analogRead(LIGHT_PIN);
-  bool isSunny = lightLevel > 2000;
-
-  if (!turnOn) {
-    if (isPumpOn) {
-      digitalWrite(PUMP_PIN, LOW);
-      long duration = millis() - pumpStartTime;
-      sendPumpLog(duration);
-      isPumpOn = false;
-    }
-    return;
-  }
-
-  if (turnOn && !isPumpOn) {
-    if (isSunny && !force) {
-      if (currentMode == "manual") {
-         mqttClient.publish(logTopic.c_str(), "{\"alert\": \"HIGH_SUN_WARNING\"}");
-      }
-      return;
-    }
-
-    digitalWrite(PUMP_PIN, HIGH);
-    pumpStartTime = millis();
-    isPumpOn = true;
-  }
-}
-
 void handleWeatherMode(int hour) {
   float temp = getTemperature();
+  Serial.println("Current temperature: " + String(temp) + "°C");
   bool shouldWater = false;
 
   if (temp > 25) {
-    if (hour == 8 || hour == 14 || hour == 20) shouldWater = true;
+    if (hour == 8 || hour == 14 || hour == 20 ) shouldWater = true;
   } else {
-    if (hour == 9 || hour == 16) shouldWater = true;
+    if (hour == 9 || hour == 16 ) shouldWater = true;
   }
 
   setPumpState(shouldWater);
@@ -222,10 +226,11 @@ void handleWeatherMode(int hour) {
 
 void handleSoilMode() {
   int moisture = analogRead(SOIL_PIN);
-  if (moisture > 3000) {
-    setPumpState(true);
-  } else if (moisture < 1500) {
+  Serial.println("Soil moisture level: " + String(moisture));
+  if (moisture > 1600) {
     setPumpState(false);
+  } else if (moisture < 1500) {
+    setPumpState(true);
   }
 }
 
@@ -248,11 +253,11 @@ void handleScheduleMode(int hour, int minute, int dayOfWeek) {
 
 void setup() {
   Serial.begin(115200);
-  delay(5000);
   pinMode(PUMP_PIN, OUTPUT);
-  digitalWrite(PUMP_PIN, LOW);
+  delay(5000);
+  setPumpState(false, true);
+  dht.begin();
 
-  
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
