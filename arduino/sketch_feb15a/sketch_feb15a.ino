@@ -34,6 +34,8 @@ const int mqttPort = 1883;
 String commandTopic = "pot/" + deviceId + "/command";   
 String statusTopic = "pot/" + deviceId + "/update/status";
 String logTopic = "pot/" + deviceId + "/update/log";
+String dataTopic = "pot/" + deviceId + "/update/data";
+
 String scheduledTopic = "pot/" + deviceId + "/schedule";
 
 int schedStartHour = 7;
@@ -56,9 +58,6 @@ void sendPumpLog(long duration) {
   float waterConsumed = durationSec * FLOW_RATE; // liters consumed
 
   StaticJsonDocument<200> doc;
-  doc["deviceId"] = deviceId;
-  doc["action"] = "WATERING_DONE";
-  doc["duration_sec"] = (int)durationSec;
   doc["water_consumed_liters"] = waterConsumed;
 
   char buffer[256];
@@ -137,6 +136,9 @@ if (String(topic) == scheduledTopic) {
     const char* newMode = doc["mode"];
     currentMode = String(newMode);
     Serial.println("Mode changed to: " + currentMode);
+    //force pump turn off when changing mode to avoid conflicts
+      digitalWrite(PUMP_PIN, HIGH);
+      isPumpOn = false;
   }
   
   else if (strcmp(action, "on") == 0) {
@@ -210,8 +212,8 @@ void publishSensorData(float temp, float humidity, int moisture, int lightLevel)
   char buffer[256];
   serializeJson(doc, buffer);
 
-  mqttClient.publish(logTopic.c_str(), buffer);
-  Serial.println("Sent sensor log data");
+  mqttClient.publish(dataTopic.c_str(), buffer);
+  Serial.println("Sent sensor data");
 }
 
 void handleWeatherMode(int hour) {
@@ -265,11 +267,12 @@ void reportFourTimesADay(int hour, int min) {
     }
   }
 }
+
 void setup() {
   Serial.begin(115200);
   pinMode(PUMP_PIN, OUTPUT);
   delay(5000);
-  setPumpState(false, true);
+  digitalWrite(PUMP_PIN, HIGH);
   dht.begin();
 
   WiFi.begin(ssid, password);

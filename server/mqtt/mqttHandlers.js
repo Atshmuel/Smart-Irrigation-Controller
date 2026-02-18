@@ -17,6 +17,9 @@ export async function handleMqttMessage(topic, payload) {
         case 'status':
             await mqttModel.handlePotStatusUpdate(id, payload)
             break;
+        case 'data':
+            await mqttModel.handleSensorData(id, payload)
+            break;
         default:
             console.log("unknown type:", type);
             break;

@@ -16,6 +16,35 @@ class MqttModel {
         }
     }
 
+    // Handle pump log updates from Arduino (when mode is manual)
+    async handlePumpLog(id, payload) {
+        try {
+            const { water_consumed_liters } = payload; // action: "on" or "off"
+            const [row] = await pool.query(
+                `SELECT id, start_time 
+                 FROM watering_events 
+                 WHERE pot_id = ? AND end_time IS NULL 
+                 ORDER BY start_time DESC 
+                 LIMIT 1`,
+                [id]
+            );
+
+            if (row.length > 0) {
+                const event = row[0];
+                await pool.query(
+                    `UPDATE watering_events
+                        SET end_time = NOW(),
+                        duration_seconds = TIMESTAMPDIFF(SECOND, start_time, NOW()),
+                        water_consumed_liters = ?
+                        WHERE id = ?`,
+                    [water_consumed_liters, event.id]
+                );
+            }
+        } catch (error) {
+
+        }
+    }
+
     // Handle pot status updates from Arduino (when mode is not manual)
     async handlePotStatusUpdate(potId, payload) {
         try {
