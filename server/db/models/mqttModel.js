@@ -2,10 +2,18 @@ import { mqttClient } from '../../mqtt/mqttClient.js';
 import { pool } from '../dbConnection.js';
 
 class MqttModel {
-
     // Handle data from sensors
     async handleDeviceMessage(id, payload) {
         console.log(`Device ${id} message:`, payload);
+        try {
+            const { temperature, humidity, soil_moisture, light_level, current_mode } = payload;
+            await pool.query(
+                'UPDATE logs SET temperature = ?, humidity = ?, soil_moisture = ?, light_level = ?, current_mode = ? WHERE id = ?',
+                [temperature, humidity, soil_moisture, light_level, current_mode, id]
+            );
+        } catch (error) {
+            console.error(`Error handling device message for pot ${id}:`, error);
+        }
     }
 
     // Handle pot status updates from Arduino (when mode is not manual)

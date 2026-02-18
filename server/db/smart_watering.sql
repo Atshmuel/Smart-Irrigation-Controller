@@ -28,6 +28,18 @@ CREATE TABLE IF NOT EXISTS `watering_events` (
     CONSTRAINT `fk_event_pot` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`)
 );
 
+CREATE TABLE IF NOT EXISTS `logs` (
+    `id` int AUTO_INCREMENT PRIMARY KEY,
+    `pot_id` int NOT NULL,
+    `temperature` float NOT NULL,
+    `humidity` float NOT NULL,
+    `soil_moisture` int NOT NULL,
+    `light_level` int NOT NULL,
+    `current_mode` varchar(50) NOT NULL,
+    CONSTRAINT `fk_log` FOREIGN KEY (`pot_id`) REFERENCES `pots`(`id`)
+);
+
+
 CREATE TABLE IF NOT EXISTS `sensors` (
 	`id` int AUTO_INCREMENT PRIMARY KEY,
 	`pot_id` int NOT NULL,
