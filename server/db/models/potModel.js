@@ -186,12 +186,6 @@ class PotModel {
                 return res.status(400).json({ message: "Pot is already off" });
             }
 
-            await this.createPotLog(id,
-                `UPDATE watering_events
-                    SET end_time = NOW(),
-                    duration_seconds = TIMESTAMPDIFF(SECOND, start_time, NOW())
-                    WHERE id = ?`, [event.id]);
-
             res.status(200).json({ message: "Pot turned off successfully", id, status: false });
             next();
         } catch (error) {

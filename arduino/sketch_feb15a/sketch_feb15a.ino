@@ -57,9 +57,7 @@ float getTemperature() {
   return dht.readTemperature();
 }
 
-void setPumpState(bool turnOn, bool force = false) {
-  int lightLevel = analogRead(LIGHT_PIN);
-  bool isSunny = lightLevel > 2000;
+void setPumpState(bool turnOn) {
 
   if (!turnOn) {
     if (isPumpOn) {
@@ -72,13 +70,6 @@ void setPumpState(bool turnOn, bool force = false) {
   }
 
   if (turnOn && !isPumpOn) {
-    if (isSunny && !force) {
-      if (currentMode == "manual") {
-         mqttClient.publish(logTopic.c_str(), "{\"alert\": \"HIGH_SUN_WARNING\"}");
-      }
-      return;
-    }
-
     digitalWrite(PUMP_PIN, LOW);
     pumpStartTime = millis();
     isPumpOn = true;
@@ -124,19 +115,17 @@ if (String(topic) == scheduledTopic) {
     const char* newMode = doc["mode"];
     currentMode = String(newMode);
     Serial.println("Mode changed to: " + currentMode);
-    //force pump turn off when changing mode to avoid conflicts
-      digitalWrite(PUMP_PIN, HIGH);
-      isPumpOn = false;
+    setPumpState(false); // Reset pump state on mode change
   }
   
   else if (strcmp(action, "on") == 0) {
     Serial.println("Received ON command from server");
-    setPumpState(true, true); // Force ON regardless of conditions
+    setPumpState(true); // Force ON regardless of conditions
   }
   
   else if (strcmp(action, "off") == 0) {
     Serial.println("Received OFF command from server");
-    setPumpState(false, true); // Force OFF regardless of conditions
+    setPumpState(false); // Force OFF regardless of conditions
   }
   else if (strcmp(action, "request_light") == 0) {
     int lightValue = analogRead(LIGHT_PIN);
