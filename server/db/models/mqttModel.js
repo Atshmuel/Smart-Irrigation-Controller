@@ -3,7 +3,7 @@ import { pool } from '../dbConnection.js';
 
 class MqttModel {
     // Handle data from sensors
-    async handleDeviceMessage(id, payload) {
+    async handleSensorsData(id, payload) {
         console.log(`Device ${id} message:`, payload);
         try {
             const { temperature, humidity, soil_moisture, light_level, current_mode } = payload;
@@ -48,7 +48,7 @@ class MqttModel {
     // Handle pot status updates from Arduino (when mode is not manual)
     async handlePotStatusUpdate(potId, payload) {
         try {
-            const { status } = payload; // status: true (on) or false (off)
+            const { status, water_consumed_liters } = payload; // status: true (on) or false (off)
             const newStatus = status === true || status === 1;
 
             // Update pot status in database
@@ -80,9 +80,9 @@ class MqttModel {
                     await pool.query(
                         `UPDATE watering_events
                         SET end_time = NOW(),
-                        duration_seconds = TIMESTAMPDIFF(SECOND, start_time, NOW())
+                        duration_seconds = TIMESTAMPDIFF(SECOND, start_time, NOW()),water_consumed_liters = ?
                         WHERE id = ?`,
-                        [event.id]
+                        [water_consumed_liters, event.id]
                     );
                 }
                 console.log(`Pot ${potId} turned off by Arduino`);

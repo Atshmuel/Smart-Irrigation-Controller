@@ -12,13 +12,15 @@ export async function handleMqttMessage(topic, payload) {
     const type = topicParts[3];
     switch (type) {
         case 'log':
-            await mqttModel.handleDeviceMessage(id, payload)
+            await mqttModel.handlePumpLog(id, payload)
+
             break;
         case 'status':
             await mqttModel.handlePotStatusUpdate(id, payload)
             break;
         case 'data':
-            await mqttModel.handleSensorData(id, payload)
+            await mqttModel.handleSensorsData(id, payload)
+
             break;
         default:
             console.log("unknown type:", type);

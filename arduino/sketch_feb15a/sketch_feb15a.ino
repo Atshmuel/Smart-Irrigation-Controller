@@ -53,18 +53,6 @@ bool manualOverride = false;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
-void sendPumpLog(long duration) {
-  float durationSec = duration / 1000.0;
-  float waterConsumed = durationSec * FLOW_RATE; // liters consumed
-
-  StaticJsonDocument<200> doc;
-  doc["water_consumed_liters"] = waterConsumed;
-
-  char buffer[256];
-  serializeJson(doc, buffer);
-  mqttClient.publish(logTopic.c_str(), buffer);
-}
-
 float getTemperature() {
   return dht.readTemperature();
 }
@@ -77,7 +65,7 @@ void setPumpState(bool turnOn, bool force = false) {
     if (isPumpOn) {
       digitalWrite(PUMP_PIN, HIGH);
       long duration = millis() - pumpStartTime;
-      sendPumpLog(duration);
+      publishPumpStatus(false, duration * FLOW_RATE / 1000.0);
       isPumpOn = false;
     }
     return;
@@ -186,9 +174,10 @@ void reconnect() {
   }
 }
 
-void publishPumpStatus(bool isOn) {
+void publishPumpStatus(bool isOn, float waterConsumedLiters) {
   StaticJsonDocument<200> doc;
   doc["status"] = isOn; 
+  doc["water_consumed_liters"]= waterConsumedLiters;
 
   char buffer[256];
   serializeJson(doc, buffer);
@@ -259,7 +248,7 @@ void handleScheduleMode(int hour, int minute, int dayOfWeek) {
 
 void reportFourTimesADay(int hour, int min) {
   // Check if it's the top of the hour and matches one of the specified hours
-  if (min == 0 && (hour == 6 || hour == 12 || hour == 18 || hour == 0)) { 
+  if (min != 0 && (hour == 21||hour == 6 || hour == 12 || hour == 18 || hour == 0)) { 
     static int lastReportHour = -1;
     if (hour != lastReportHour) { // Ensure we only report once per hour
       publishSensorData(getTemperature(), dht.readHumidity(), analogRead(SOIL_PIN), analogRead(LIGHT_PIN));
