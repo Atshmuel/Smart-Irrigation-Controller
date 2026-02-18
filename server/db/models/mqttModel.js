@@ -8,8 +8,8 @@ class MqttModel {
         try {
             const { temperature, humidity, soil_moisture, light_level, current_mode } = payload;
             await pool.query(
-                'UPDATE logs SET temperature = ?, humidity = ?, soil_moisture = ?, light_level = ?, current_mode = ? WHERE id = ?',
-                [temperature, humidity, soil_moisture, light_level, current_mode, id]
+                'INSERT INTO logs (pot_id, temperature, humidity, soil_moisture, light_level, current_mode) VALUES (?, ?, ?, ?, ?, ?)',
+                [id, temperature, humidity, soil_moisture, light_level, current_mode]
             );
         } catch (error) {
             console.error(`Error handling device message for pot ${id}:`, error);
