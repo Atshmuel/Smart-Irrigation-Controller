@@ -10,11 +10,13 @@
 #define DHT_PIN 16
 #define DHTTYPE DHT22
 
+#define FLOW_RATE 0.05
+
 DHT dht(DHT_PIN, DHTTYPE);
 
 // WiFi credentials
-const char* ssid = "Adva";
-const char* password = "0526578915";
+const char* ssid = "";
+const char* password = "";
 
 // Device and pot identifiers
 const String deviceId = "1";
@@ -44,18 +46,20 @@ String currentMode = "manual";
 bool isPumpOn = false;
 unsigned long pumpStartTime = 0;
 bool manualOverride = false;
-unsigned long lastMsgTime = 0;
-const long reportInterval = 10000;
 
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
 void sendPumpLog(long duration) {
+  float durationSec = duration / 1000.0;
+  float waterConsumed = durationSec * FLOW_RATE; // liters consumed
+
   StaticJsonDocument<200> doc;
   doc["deviceId"] = deviceId;
   doc["action"] = "WATERING_DONE";
-  doc["duration_sec"] = duration / 1000;
+  doc["duration_sec"] = (int)durationSec;
+  doc["water_consumed_liters"] = waterConsumed;
 
   char buffer[256];
   serializeJson(doc, buffer);
@@ -216,9 +220,9 @@ void handleWeatherMode(int hour) {
   bool shouldWater = false;
 
   if (temp > 25) {
-    if (hour == 8 || hour == 14 || hour == 20 ) shouldWater = true;
+    if ((hour >= 8 && hour < 11) || (hour >= 14 && hour < 17) || (hour >= 20 && hour < 23) ) shouldWater = true;
   } else {
-    if (hour == 9 || hour == 16 ) shouldWater = true;
+    if ((hour >= 9 && hour < 11) || (hour >= 16 && hour < 18) ) shouldWater = true;
   }
 
   setPumpState(shouldWater);
@@ -251,6 +255,16 @@ void handleScheduleMode(int hour, int minute, int dayOfWeek) {
   }
 }
 
+void reportFourTimesADay(int hour, int min) {
+  // Check if it's the top of the hour and matches one of the specified hours
+  if (min == 0 && (hour == 6 || hour == 12 || hour == 18 || hour == 0)) { 
+    static int lastReportHour = -1;
+    if (hour != lastReportHour) { // Ensure we only report once per hour
+      publishSensorData(getTemperature(), dht.readHumidity(), analogRead(SOIL_PIN), analogRead(LIGHT_PIN));
+      lastReportHour = hour;
+    }
+  }
+}
 void setup() {
   Serial.begin(115200);
   pinMode(PUMP_PIN, OUTPUT);
@@ -283,6 +297,7 @@ void loop() {
   int currentHour = timeinfo.tm_hour;
   int currentMin = timeinfo.tm_min;
   int currentDay = timeinfo.tm_wday;
+
 if (currentMode == "weather") {
   handleWeatherMode(currentHour);
 } 
@@ -294,21 +309,5 @@ else if (currentMode == "scheduled") {
 } 
 else if (currentMode == "manual") {
 }
-
-  if (millis() - lastMsgTime > reportInterval) {
-    lastMsgTime = millis();
-
-    StaticJsonDocument<256> doc;
-    doc["deviceId"] = deviceId;
-    doc["moisture"] = analogRead(SOIL_PIN);
-    doc["light"] = analogRead(LIGHT_PIN);
-    doc["temp"] = getTemperature();
-    doc["mode"] = currentMode;
-    doc["pumpState"] = isPumpOn;
-    doc["hour"] = currentHour;
-
-    char buffer[256];
-    serializeJson(doc, buffer);
-    mqttClient.publish(statusTopic.c_str(), buffer);
-  }
+  reportFourTimesADay(currentHour, currentMin);
 }
